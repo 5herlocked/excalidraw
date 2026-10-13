@@ -10,6 +10,7 @@ import {
   actionSaveToActiveFile,
   actionShortcuts,
   actionToggleArrowBinding,
+  actionToggleDiagramAuditor,
   actionToggleGridMode,
   actionToggleMidpointSnapping,
   actionToggleObjectsSnapMode,
@@ -42,8 +43,9 @@ import DropdownMenuItemContentRadio from "../dropdownMenu/DropdownMenuItemConten
 import DropdownMenuItemLink from "../dropdownMenu/DropdownMenuItemLink";
 import DropdownMenuSub from "../dropdownMenu/DropdownMenuSub";
 import {
-  GithubIcon,
+  alertTriangleIcon,
   DiscordIcon,
+  GithubIcon,
   XBrandIcon,
   settingsIcon,
   emptyIcon,
@@ -189,6 +191,24 @@ export const SearchMenu = (opts?: { className?: string }) => {
   );
 };
 SearchMenu.displayName = "SearchMenu";
+
+export const DiagramAuditor = (opts?: { className?: string }) => {
+  const { t } = useI18n();
+  const actionManager = useExcalidrawActionManager();
+
+  return (
+    <DropdownMenuItem
+      icon={alertTriangleIcon}
+      data-testid="diagram-auditor-button"
+      onSelect={() => actionManager.executeAction(actionToggleDiagramAuditor)}
+      aria-label={t("diagramAuditor.title")}
+      className={opts?.className}
+    >
+      {t("diagramAuditor.title")}
+    </DropdownMenuItem>
+  );
+};
+DiagramAuditor.displayName = "DiagramAuditor";
 
 export const Help = () => {
   const { t } = useI18n();
