@@ -530,6 +530,7 @@ export const DEFAULT_ELEMENT_PROPS: {
 
 export const LIBRARY_SIDEBAR_TAB = "library";
 export const CANVAS_SEARCH_TAB = "search";
+export const DIAGRAM_AUDITOR_TAB = "diagram-auditor";
 
 export const DEFAULT_SIDEBAR = {
   name: "default",

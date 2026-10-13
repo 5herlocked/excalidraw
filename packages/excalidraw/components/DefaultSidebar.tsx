@@ -3,6 +3,7 @@ import clsx from "clsx";
 import {
   CANVAS_SEARCH_TAB,
   DEFAULT_SIDEBAR,
+  DIAGRAM_AUDITOR_TAB,
   LIBRARY_SIDEBAR_TAB,
   composeEventHandlers,
 } from "@excalidraw/common";
@@ -16,10 +17,11 @@ import "../components/dropdownMenu/DropdownMenu.scss";
 
 import { useExcalidrawSetAppState } from "./App";
 import { LibraryMenu } from "./LibraryMenu";
+import { DiagramAuditor } from "./DiagramAuditor";
 import { SearchMenu } from "./SearchMenu";
 import { Sidebar } from "./Sidebar/Sidebar";
 import { withInternalFallback } from "./hoc/withInternalFallback";
-import { LibraryIcon, searchIcon } from "./icons";
+import { alertTriangleIcon, LibraryIcon, searchIcon } from "./icons";
 
 import type { SidebarProps, SidebarTriggerProps } from "./Sidebar/common";
 
@@ -102,6 +104,9 @@ export const DefaultSidebar = Object.assign(
                 <Sidebar.TabTrigger tab={CANVAS_SEARCH_TAB}>
                   {searchIcon}
                 </Sidebar.TabTrigger>
+                <Sidebar.TabTrigger tab={DIAGRAM_AUDITOR_TAB}>
+                  {alertTriangleIcon}
+                </Sidebar.TabTrigger>
                 <Sidebar.TabTrigger tab={LIBRARY_SIDEBAR_TAB}>
                   {LibraryIcon}
                 </Sidebar.TabTrigger>
@@ -113,6 +118,9 @@ export const DefaultSidebar = Object.assign(
             </Sidebar.Tab>
             <Sidebar.Tab tab={CANVAS_SEARCH_TAB}>
               <SearchMenu />
+            </Sidebar.Tab>
+            <Sidebar.Tab tab={DIAGRAM_AUDITOR_TAB}>
+              <DiagramAuditor />
             </Sidebar.Tab>
             {children}
           </Sidebar.Tabs>

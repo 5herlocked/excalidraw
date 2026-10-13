@@ -487,8 +487,10 @@ export interface AppState {
    * NOTE this is only a user preference and does not reflect the actual docked
    * state of the sidebar, because the host apps can override this through
    * a DefaultSidebar prop, which is not reflected back to the appState.
-   */
+  */
   defaultSidebarDockedPreference: boolean;
+  /** Whether the diagram auditor automatically re-scans when the scene changes. */
+  diagramAuditorAutoRescan: boolean;
 
   lastPointerDownWith: PointerType;
   selectedElementIds: Readonly<{ [id: string]: true }>;

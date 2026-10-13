@@ -1,0 +1,127 @@
+@use "../css/variables.module" as *;
+
+.excalidraw {
+  .layer-ui__diagram-auditor {
+    flex: 1 0 auto;
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+    padding-top: 0.75rem;
+  }
+
+  .layer-ui__diagram-auditor-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0 0.75rem;
+
+    h3 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    p {
+      margin: 0.25rem 0 0;
+      color: var(--color-gray-60);
+      font-size: 0.8rem;
+      line-height: 1.35;
+    }
+
+    .rescan-button {
+      flex: 0 0 auto;
+      gap: 0.375rem;
+      min-height: 2rem;
+      padding: 0 0.625rem;
+
+      svg {
+        width: 1rem;
+        height: 1rem;
+      }
+    }
+  }
+
+  .layer-ui__diagram-auditor-auto-rescan {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin: 0.75rem 0.75rem 0;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+
+  .layer-ui__diagram-auditor-count {
+    display: flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: space-between;
+    margin: 0 0.75rem 0.25rem;
+    padding-top: 0.5rem;
+    font-size: 0.8rem;
+
+    .result-nav {
+      display: flex;
+      gap: 0.25rem;
+    }
+
+    .result-nav-btn {
+      width: 2.25rem;
+      height: 2.25rem;
+      --button-border: transparent;
+    }
+
+    .empty-state {
+      width: 100%;
+      padding: 1rem 0;
+      color: var(--color-gray-60);
+      text-align: center;
+    }
+  }
+
+  .layer-ui__diagram-auditor-results {
+    display: flex;
+    overflow-y: auto;
+    flex: 1 1 0;
+    flex-direction: column;
+    gap: 0.125rem;
+    padding: 0 0.75rem 0.75rem;
+  }
+
+  .layer-ui__diagram-auditor-result {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: flex-start;
+    min-height: 3.25rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid transparent;
+    border-radius: var(--border-radius-md);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+
+    &:hover,
+    &.active {
+      background-color: var(--color-surface-high);
+    }
+
+    &:focus-visible,
+    &:active {
+      border-color: var(--color-primary);
+      outline: none;
+    }
+
+    .result-title {
+      font-size: 0.875rem;
+      font-weight: 700;
+    }
+
+    .result-detail {
+      margin-top: 0.25rem;
+      color: var(--color-gray-60);
+      font-size: 0.8rem;
+    }
+  }
+}

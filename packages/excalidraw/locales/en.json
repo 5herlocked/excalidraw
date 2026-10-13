@@ -227,6 +227,19 @@
     "frames": "Frames",
     "texts": "Texts"
   },
+  "diagramAuditor": {
+    "title": "Diagram auditor",
+    "description": "Find arrows with endpoints that are not connected.",
+    "rescan": "Re-scan",
+    "autoRescan": "Auto re-scan",
+    "singleResult": "issue",
+    "multipleResults": "issues",
+    "noIssues": "No unconnected arrows found.",
+    "arrowAt": "Arrow at ({{x}}, {{y}})",
+    "startUnbound": "Start endpoint is unbound",
+    "endUnbound": "End endpoint is unbound",
+    "bothUnbound": "Both endpoints are unbound"
+  },
   "buttons": {
     "clearReset": "Reset the canvas",
     "exportJSON": "Export to file",
