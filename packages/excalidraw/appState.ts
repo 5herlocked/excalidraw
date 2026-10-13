@@ -80,6 +80,7 @@ export const getDefaultAppState = (): Omit<
     showHints: true,
     inputDevice: "auto",
     defaultSidebarDockedPreference: false,
+    diagramAuditorAutoRescan: true,
     isLoading: false,
     isResizing: false,
     isRotating: false,
@@ -229,6 +230,11 @@ const APP_STATE_STORAGE_CONF = (<
   showHints: { browser: true, export: false, server: false },
   inputDevice: { browser: true, export: false, server: false },
   defaultSidebarDockedPreference: {
+    browser: true,
+    export: false,
+    server: false,
+  },
+  diagramAuditorAutoRescan: {
     browser: true,
     export: false,
     server: false,
