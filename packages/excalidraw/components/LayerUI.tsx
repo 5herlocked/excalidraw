@@ -122,6 +122,7 @@ const DefaultMainMenu: React.FC<{
         <MainMenu.DefaultItems.SaveAsImage />
       )}
       <MainMenu.DefaultItems.SearchMenu />
+      <MainMenu.DefaultItems.DiagramAuditor />
       <MainMenu.DefaultItems.Help />
       <MainMenu.DefaultItems.ClearCanvas />
       <MainMenu.Separator />

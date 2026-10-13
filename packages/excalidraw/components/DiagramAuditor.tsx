@@ -1,10 +1,13 @@
 import clsx from "clsx";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { EVENT, KEYS, addEventListener } from "@excalidraw/common";
 import {
+  CaptureUpdateAction,
+  fixArrowBinding,
   getCommonBounds,
   getBoundTextElement,
+  getSuggestedBindingsForArrow,
   getUnconnectedArrows,
   makeNextSelectedElementIds,
 } from "@excalidraw/element";
@@ -30,6 +33,7 @@ export const DiagramAuditor = () => {
   const resultsRef = useRef(results);
   const focusIndexRef = useRef(focusIndex);
   const elementsMap = app.scene.getNonDeletedElementsMap();
+  const sceneNonce = app.scene.getSceneNonce();
 
   resultsRef.current = results;
   focusIndexRef.current = focusIndex;
@@ -145,6 +149,74 @@ export const DiagramAuditor = () => {
       : t("diagramAuditor.multipleResults")
   }`;
 
+  const suggestions = useMemo(
+    () =>
+      results.map((result) => ({
+        result,
+        bindings: getSuggestedBindingsForArrow(
+          result.element,
+          elementsMap,
+          app.state.zoom,
+        ),
+      })),
+    [results, sceneNonce, app.state.zoom, app.scene],
+  );
+  const fixableCount = suggestions.filter(
+    ({ bindings }) => bindings.start || bindings.end,
+  ).length;
+
+  const fixResults = (items: typeof suggestions) => {
+    let fixed = false;
+    const currentElementsMap = app.scene.getNonDeletedElementsMap();
+    const currentResults = new Map(
+      getUnconnectedArrows(currentElementsMap).map((result) => [
+        result.element.id,
+        result,
+      ]),
+    );
+
+    for (const { result } of items) {
+      const currentResult = currentResults.get(result.element.id);
+      if (!currentResult) {
+        continue;
+      }
+
+      const bindings = getSuggestedBindingsForArrow(
+        currentResult.element,
+        currentElementsMap,
+        app.state.zoom,
+      );
+      if (bindings.start) {
+        fixArrowBinding(
+          currentResult.element,
+          bindings.start,
+          "start",
+          app.scene,
+          app.state.zoom,
+        );
+        fixed = true;
+      }
+      if (bindings.end) {
+        fixArrowBinding(
+          currentResult.element,
+          bindings.end,
+          "end",
+          app.scene,
+          app.state.zoom,
+        );
+        fixed = true;
+      }
+    }
+
+    if (fixed) {
+      app.syncActionResult({
+        elements: app.scene.getElementsIncludingDeleted(),
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+      });
+      scan();
+    }
+  };
+
   return (
     <div className="layer-ui__diagram-auditor">
       <div className="layer-ui__diagram-auditor-header">
@@ -176,6 +248,13 @@ export const DiagramAuditor = () => {
               {focusIndex !== null ? `${focusIndex + 1} / ` : ""}
               {resultCount}
             </div>
+            <Button
+              className="fix-all-button"
+              onSelect={() => fixResults(suggestions)}
+              disabled={!fixableCount}
+            >
+              {t("diagramAuditor.fixAll")}
+            </Button>
             <div className="result-nav">
               <Button className="result-nav-btn" onSelect={goToNextItem}>
                 {collapseDownIcon}
@@ -191,7 +270,7 @@ export const DiagramAuditor = () => {
       </div>
 
       <div className="layer-ui__diagram-auditor-results">
-        {results.map((result, index) => {
+        {suggestions.map(({ result, bindings }, index) => {
           const boundText = getBoundTextElement(result.element, elementsMap);
           const resultTitle = boundText?.text.trim()
             ? boundText.text.trim()
@@ -203,12 +282,13 @@ export const DiagramAuditor = () => {
             result.startUnbound && result.endUnbound
               ? t("diagramAuditor.bothUnbound")
               : result.startUnbound
-                ? t("diagramAuditor.startUnbound")
-                : t("diagramAuditor.endUnbound");
+              ? t("diagramAuditor.startUnbound")
+              : t("diagramAuditor.endUnbound");
+
+          const isFixable = !!(bindings.start || bindings.end);
 
           return (
-            <button
-              type="button"
+            <div
               key={result.element.id}
               className={clsx("layer-ui__diagram-auditor-result", {
                 active: focusIndex === index,
@@ -220,9 +300,23 @@ export const DiagramAuditor = () => {
                 }
               }}
             >
-              <span className="result-title">{resultTitle}</span>
-              <span className="result-detail">{endpointLabel}</span>
-            </button>
+              <button type="button" className="result-content">
+                <span className="result-title">{resultTitle}</span>
+                <span className="result-detail">{endpointLabel}</span>
+              </button>
+              {isFixable ? (
+                <Button
+                  className="fix-button"
+                  onSelect={() => fixResults([{ result, bindings }])}
+                >
+                  {t("diagramAuditor.fix")}
+                </Button>
+              ) : (
+                <span className="unfixable">
+                  {t("diagramAuditor.unfixable")}
+                </span>
+              )}
+            </div>
           );
         })}
       </div>

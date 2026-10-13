@@ -18,6 +18,7 @@ import { getShortcutKey } from "../../shortcut";
 import {
   actionClearCanvas,
   actionLink,
+  actionToggleDiagramAuditor,
   actionToggleSearchMenu,
   actionToggleTheme,
 } from "../../actions";
@@ -450,6 +451,7 @@ function CommandPaletteInner({
             actionManager.executeAction(actionToggleSearchMenu);
           },
         },
+        actionToCommand(actionToggleDiagramAuditor, DEFAULT_CATEGORIES.app),
         {
           label: t("labels.shapeSwitch"),
           category: DEFAULT_CATEGORIES.elements,
