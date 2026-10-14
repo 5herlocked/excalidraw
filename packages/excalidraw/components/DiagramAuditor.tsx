@@ -4,14 +4,23 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { EVENT, KEYS, addEventListener } from "@excalidraw/common";
 import {
   CaptureUpdateAction,
+  Scene,
+  deepCopyElement,
   fixArrowBinding,
   getCommonBounds,
   getBoundTextElement,
   getSuggestedBindingsForArrow,
   getUnconnectedArrows,
+  isArrowElement,
+  isBindableElement,
   makeNextSelectedElementIds,
+  newElementWith,
 } from "@excalidraw/element";
 import type { UnconnectedArrow } from "@excalidraw/element";
+import type {
+  NonDeletedExcalidrawElement,
+  NonDeletedSceneElementsMap,
+} from "@excalidraw/element/types";
 
 import { atom, useAtom } from "../editor-jotai";
 import { useStable } from "../hooks/useStable";
@@ -167,7 +176,15 @@ export const DiagramAuditor = () => {
 
   const fixResults = (items: typeof suggestions) => {
     let fixed = false;
-    const currentElementsMap = app.scene.getNonDeletedElementsMap();
+    const currentElements = app.scene
+      .getElementsIncludingDeleted()
+      .map((element) => deepCopyElement(element));
+    const currentElementsMap = new Map(
+      currentElements
+        .filter((element) => !element.isDeleted)
+        .map((element) => [element.id, element as NonDeletedExcalidrawElement]),
+    ) as NonDeletedSceneElementsMap;
+    const fixingScene = new Scene(currentElements, { skipValidation: true });
     const currentResults = new Map(
       getUnconnectedArrows(currentElementsMap).map((result) => [
         result.element.id,
@@ -186,31 +203,56 @@ export const DiagramAuditor = () => {
         currentElementsMap,
         app.state.zoom,
       );
+      const arrow = currentElementsMap.get(currentResult.element.id);
+      if (!arrow || !isArrowElement(arrow)) {
+        continue;
+      }
+
       if (bindings.start) {
-        fixArrowBinding(
-          currentResult.element,
-          bindings.start,
-          "start",
-          app.scene,
-          app.state.zoom,
-        );
-        fixed = true;
+        const candidate = currentElementsMap.get(bindings.start.id);
+        if (candidate && isBindableElement(candidate)) {
+          fixArrowBinding(
+            arrow,
+            candidate,
+            "start",
+            fixingScene,
+            app.state.zoom,
+          );
+          fixed = true;
+        }
       }
       if (bindings.end) {
-        fixArrowBinding(
-          currentResult.element,
-          bindings.end,
-          "end",
-          app.scene,
-          app.state.zoom,
-        );
-        fixed = true;
+        const candidate = currentElementsMap.get(bindings.end.id);
+        if (candidate && isBindableElement(candidate)) {
+          fixArrowBinding(arrow, candidate, "end", fixingScene, app.state.zoom);
+          fixed = true;
+        }
       }
     }
 
     if (fixed) {
+      const fixedElementsMap = new Map(
+        currentElements.map((element) => [element.id, element]),
+      );
+      const nextElements = app.scene
+        .getElementsIncludingDeleted()
+        .map((element) => {
+          const fixedElement = fixedElementsMap.get(element.id);
+          if (!fixedElement) {
+            return element;
+          }
+          if (isArrowElement(element) && isArrowElement(fixedElement)) {
+            return newElementWith(element, {
+              startBinding: fixedElement.startBinding,
+              endBinding: fixedElement.endBinding,
+            });
+          }
+          return newElementWith(element, {
+            boundElements: fixedElement.boundElements,
+          });
+        });
       app.syncActionResult({
-        elements: app.scene.getElementsIncludingDeleted(),
+        elements: nextElements,
         captureUpdate: CaptureUpdateAction.IMMEDIATELY,
       });
       scan();
@@ -293,7 +335,11 @@ export const DiagramAuditor = () => {
               className={clsx("layer-ui__diagram-auditor-result", {
                 active: focusIndex === index,
               })}
-              onClick={() => focusResult(index)}
+              onClick={(event) => {
+                if (!(event.target as HTMLElement).closest(".fix-button")) {
+                  focusResult(index);
+                }
+              }}
               ref={(node) => {
                 if (focusIndex === index) {
                   node?.scrollIntoView({ behavior: "auto", block: "nearest" });

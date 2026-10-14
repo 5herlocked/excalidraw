@@ -3,20 +3,29 @@ import React from "react";
 import { pointFrom } from "@excalidraw/math";
 
 import { DEFAULT_SIDEBAR, DIAGRAM_AUDITOR_TAB, KEYS } from "@excalidraw/common";
+import { CaptureUpdateAction } from "@excalidraw/element";
 
-import { Excalidraw } from "../index";
+import { Excalidraw, MainMenu } from "../index";
 import { actionToggleDiagramAuditor } from "../actions";
+import { createRedoAction, createUndoAction } from "../actions/actionHistory";
 
 import { API } from "./helpers/api";
-import { Keyboard } from "./helpers/ui";
+import { Keyboard, UI } from "./helpers/ui";
 import { fireEvent, render, waitFor } from "./test-utils";
 
 const { h } = window;
 
 describe("diagram auditor", () => {
   beforeEach(async () => {
-    await render(<Excalidraw />);
-    window.HTMLElement.prototype.scrollIntoView = jest.fn();
+    window.HTMLElement.prototype.scrollIntoView = vi.fn();
+
+    await render(
+      <Excalidraw>
+        <MainMenu>
+          <MainMenu.DefaultItems.DiagramAuditor />
+        </MainMenu>
+      </Excalidraw>,
+    );
   });
 
   const openAuditor = async () => {
@@ -51,7 +60,7 @@ describe("diagram auditor", () => {
       }),
     ];
     API.setElements([target, ...arrows]);
-    const setViewport = jest.spyOn(h.app.viewport, "setViewport");
+    const setViewport = vi.spyOn(h.app.viewport, "setViewport");
 
     API.setAppState({
       openSidebar: {
@@ -74,10 +83,18 @@ describe("diagram auditor", () => {
       ".layer-ui__diagram-auditor-result",
     );
     expect(results).toHaveLength(2);
+    const scrollIntoView = vi.fn();
+    results[0].scrollIntoView = scrollIntoView;
 
     fireEvent.click(results[0]);
 
     expect(h.state.selectedElementIds).toEqual({ [arrows[0].id]: true });
+    await waitFor(() =>
+      expect(scrollIntoView).toHaveBeenCalledWith({
+        behavior: "auto",
+        block: "nearest",
+      }),
+    );
     expect(setViewport).toHaveBeenCalledWith(
       expect.objectContaining({
         fit: "scale-down",
@@ -102,7 +119,31 @@ describe("diagram auditor", () => {
         points: [pointFrom(0, 0), pointFrom(200, 0)],
       }),
     );
-    API.setElements([...targets, ...arrows]);
+    const boundArrow = API.createElement({
+      type: "arrow",
+      x: 100,
+      y: targets[0].y + 50,
+      points: [pointFrom(0, 0), pointFrom(200, 0)],
+      startBinding: {
+        elementId: targets[0].id,
+        fixedPoint: [0.5, 0.5],
+        mode: "orbit",
+      },
+      endBinding: {
+        elementId: targets[0].id,
+        fixedPoint: [0.5, 0.5],
+        mode: "orbit",
+      },
+    });
+    const expectedBoundArrowBindings = {
+      startBinding: structuredClone(boundArrow.startBinding),
+      endBinding: structuredClone(boundArrow.endBinding),
+    };
+    API.updateScene({
+      elements: [...targets, ...arrows, boundArrow],
+      captureUpdate: CaptureUpdateAction.NEVER,
+    });
+    await waitFor(() => expect(API.getSnapshot()).toHaveLength(5));
 
     const auditor = await openAuditor();
     const fixButtons = await waitFor(() => {
@@ -111,28 +152,100 @@ describe("diagram auditor", () => {
       expect(buttons).toHaveLength(2);
       return buttons;
     });
+    const undoStackLength = API.getUndoStack().length;
     fireEvent.click(fixButtons[0]);
 
-    const fixedArrow = await waitFor(() => {
-      const fixed = arrows.find(
-        (arrow) =>
-          API.getElement(arrow).startBinding ||
-          API.getElement(arrow).endBinding,
+    const fixedArrow = arrows[0];
+    const unfixedArrow = arrows[1];
+    await waitFor(() => {
+      expect(API.getElement(fixedArrow).startBinding?.elementId).toBe(
+        targets[0].id,
       );
-      expect(fixed).toBeDefined();
-      return fixed!;
     });
-    const unfixedArrow = arrows.find((arrow) => arrow.id !== fixedArrow.id)!;
-    {
-      const binding =
-        API.getElement(fixedArrow).startBinding ||
-        API.getElement(fixedArrow).endBinding;
-      expect(targets.map((target) => target.id)).toContain(binding?.elementId);
-    }
+    expect(API.getElement(fixedArrow).endBinding).toBeNull();
     expect(API.getElement(unfixedArrow).startBinding).toBeNull();
     expect(API.getElement(unfixedArrow).endBinding).toBeNull();
+    expect(API.getElement(boundArrow).startBinding).toEqual(
+      expectedBoundArrowBindings.startBinding,
+    );
+    expect(API.getElement(boundArrow).endBinding).toEqual(
+      expectedBoundArrowBindings.endBinding,
+    );
 
-    await waitFor(() => expect(API.getUndoStack().length).toBeGreaterThan(0));
+    await waitFor(() =>
+      expect(API.getUndoStack().length).toBeGreaterThan(undoStackLength),
+    );
+
+    API.executeAction(createUndoAction(h.history));
+    await waitFor(() => {
+      expect(API.getElement(fixedArrow).startBinding).toBeNull();
+      expect(API.getElement(fixedArrow).endBinding).toBeNull();
+    });
+    expect(API.getElement(boundArrow).startBinding).toEqual(
+      expectedBoundArrowBindings.startBinding,
+    );
+    expect(API.getElement(boundArrow).endBinding).toEqual(
+      expectedBoundArrowBindings.endBinding,
+    );
+
+    API.executeAction(createRedoAction(h.history));
+    await waitFor(() => {
+      expect(API.getElement(fixedArrow).startBinding?.elementId).toBe(
+        targets[0].id,
+      );
+    });
+  });
+
+  it("fixes an unbound end endpoint and makes the fix undoable", async () => {
+    const target = API.createElement({
+      type: "rectangle",
+      x: 300,
+      y: 0,
+    });
+    const arrow = API.createElement({
+      type: "arrow",
+      x: 100,
+      y: 50,
+      points: [pointFrom(0, 0), pointFrom(200, 0)],
+      startBinding: {
+        elementId: target.id,
+        fixedPoint: [0.5, 0.5],
+        mode: "orbit",
+      },
+    });
+    const expectedStartBinding = structuredClone(arrow.startBinding);
+    API.updateScene({
+      elements: [target, arrow],
+      captureUpdate: CaptureUpdateAction.NEVER,
+    });
+
+    const auditor = await openAuditor();
+    const fixButton = await waitFor(() => {
+      const button = auditor.querySelector<HTMLButtonElement>(".fix-button");
+      expect(button).not.toBeNull();
+      return button!;
+    });
+    const undoStackLength = API.getUndoStack().length;
+    fireEvent.click(fixButton);
+
+    await waitFor(() => {
+      expect(API.getElement(arrow).endBinding?.elementId).toBe(target.id);
+    });
+    expect(API.getElement(arrow).startBinding).toEqual(expectedStartBinding);
+    await waitFor(() =>
+      expect(API.getUndoStack().length).toBeGreaterThan(undoStackLength),
+    );
+
+    API.executeAction(createUndoAction(h.history));
+    await waitFor(() => {
+      expect(API.getElement(arrow).endBinding).toBeNull();
+    });
+    expect(API.getElement(arrow).startBinding).toEqual(expectedStartBinding);
+
+    API.executeAction(createRedoAction(h.history));
+    await waitFor(() => {
+      expect(API.getElement(arrow).endBinding?.elementId).toBe(target.id);
+    });
   });
 
   it("fixes every fixable arrow", async () => {
@@ -218,5 +331,21 @@ describe("diagram auditor", () => {
 
     API.executeAction(actionToggleDiagramAuditor);
     expect(h.state.openSidebar).toBeNull();
+  });
+
+  it("opens the auditor from the main menu", async () => {
+    fireEvent.click(
+      h.app.excalidrawContainerValue.container!.querySelector(
+        ".dropdown-menu-button",
+      )!,
+    );
+    UI.clickOnTestId("diagram-auditor-button");
+
+    await waitFor(() => {
+      expect(h.state.openSidebar).toEqual({
+        name: DEFAULT_SIDEBAR.name,
+        tab: DIAGRAM_AUDITOR_TAB,
+      });
+    });
   });
 });
